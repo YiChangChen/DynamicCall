@@ -1,0 +1,28 @@
+        /// <summary>
+        /// 使用dll method
+        /// </summary>
+        /// <param name="DllName">dll名稱</param>
+        /// <param name="className">class名稱</param>
+        /// <param name="methodName">method名稱</param>
+        /// <param name="Method_parameters">method參數</param>
+        /// <param name="hasCtor">是否有建構子，預設false</param>
+        /// <param name="CtorParams_type">建構子參數型態，預設null</param>
+        /// <param name="Ctor_parameters">建構式參數，預設null</param>
+        /// <returns></returns>
+
+private object callDLL(string DllName, string className, string methodName, object[] Method_parameters, bool hasCtor = false, Type[] CtorParams_type = null, object[] Ctor_parameters = null) {
+                               //InvoiceConvertLibrary, Invoice, ConvertToXML, object[] { "", "", "" }, Type[2] { typeof(char), typeof(string) } 
+            Assembly assembly = Assembly.LoadFile(AppDomain.CurrentDomain.BaseDirectory + DllName + ".dll"); //載入dll檔路徑
+            Type type = assembly.GetType(DllName + "." + className); //取得要呼叫的class            
+            if (!hasCtor) { //無建構子
+                MethodInfo getMethod = type.GetMethod(methodName); //取得要使用的method
+                object obj = Activator.CreateInstance(type);
+                return getMethod.Invoke(obj, Method_parameters);
+            } else { //有建構子
+                ConstructorInfo ctor = type.GetConstructor(CtorParams_type); //取得class建構式
+                object obj = ctor.Invoke(Ctor_parameters);
+                MethodInfo getMethod = type.GetMethod(methodName); //取得要使用的method
+                return getMethod.Invoke(obj, Method_parameters);
+            }
+
+        }

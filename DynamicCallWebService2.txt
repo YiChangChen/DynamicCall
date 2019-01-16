@@ -1,0 +1,53 @@
+﻿//from  https://hk.saowen.com/a/40b70ea1d70e7f9ef5d052922aaabea8dc9d008a6c69fc4de2f77553350ecd3e
+
+public static class InvokeWebServiceDynamic {
+        /// <summary>
+        /// 動態調用WebService
+        /// </summary>
+        /// <param name="_url">web服務url地址</param>
+        /// <param name="_methodName">web服務中的方法</param>
+        /// <param name="_params">傳遞給方法的參數</param>
+        /// <returns></returns>
+        public static object InvokeWebMethod(string _url, string _methodName, params object[] _params) {
+            WebClient client = new WebClient();
+            //String url = "http://localhost:62388/EINV/WS_INVOICE.asmx?WSDL";//這個地址可以寫在Config文檔裏面
+            Stream stream = client.OpenRead(_url);
+            ServiceDescription description = ServiceDescription.Read(stream);
+
+            ServiceDescriptionImporter importer = new ServiceDescriptionImporter();//創建客户端代理代理類。
+            importer.ProtocolName = "Soap"; //指定訪問協議。
+            importer.Style = ServiceDescriptionImportStyle.Client; //生成客户端代理。
+            importer.CodeGenerationOptions = CodeGenerationOptions.GenerateProperties |
+                CodeGenerationOptions.GenerateNewAsync;
+            importer.AddServiceDescription(description, null, null); //添加WSDL文檔。
+            CodeNamespace nmspace = new CodeNamespace(); //命名空間
+            nmspace.Name = "test";      //這個命名空間可以自己取
+            CodeCompileUnit unit = new CodeCompileUnit();
+            unit.Namespaces.Add(nmspace);
+            ServiceDescriptionImportWarnings warning = importer.Import(nmspace, unit);
+            CodeDomProvider provider = CodeDomProvider.CreateProvider("CSharp");
+            CompilerParameters parameter = new CompilerParameters();
+            parameter.GenerateExecutable = false;
+            parameter.OutputAssembly = "MyTest.dll";//輸出進程集的名稱
+            parameter.ReferencedAssemblies.Add("System.dll");
+            parameter.ReferencedAssemblies.Add("System.XML.dll");
+            parameter.ReferencedAssemblies.Add("System.Web.Services.dll");
+            parameter.ReferencedAssemblies.Add("System.Data.dll");
+            CompilerResults result = provider.CompileAssemblyFromDom(parameter, unit);
+            if (result.Errors.HasErrors) {
+                // 顯示編譯錯誤信息             
+            }
+            Assembly asm = Assembly.LoadFrom("MyTest.dll");//加載前面生成的進程集
+            Type t = asm.GetType("test.WS_INVOICE"); //前面的命名空間.類名,類必須是webservice中定義的
+            object o = Activator.CreateInstance(t);
+            MethodInfo method = t.GetMethod(_methodName);//GetPersons是服務端的方法名稱,你想調用服務端的什麼方法都可以在這裏改,最好封裝一下
+            object item = method.Invoke(o, _params); //注：method.Invoke(o, null)返回的是一個Object,如果你服務端返回的是DataSet,這裏也是用(DataSet)method.Invoke(o, null)轉一下就行了
+            //foreach (string str in item)
+            //    Console.WriteLine(str);               //上面是根據WebService地址，模似生成一個代理類,如果你想看看生成的代碼文檔是什麼樣子，可以用以下代碼保存下來，默認是保存在bin目錄下面
+            //TextWriter writer = File.CreateText("MyTest.cs");
+            //provider.GenerateCodeFromCompileUnit(unit, writer, null);
+            //writer.Flush();
+            //writer.Close();
+            return item;
+        }
+    }
